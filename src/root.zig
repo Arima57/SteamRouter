@@ -1,6 +1,4 @@
 const std = @import("std");
-// Cuz zig is an asshole in terms of file i/o
-extern fn ks_log(fmt: [*:0]const u8, ...) void;
 
 const HMODULE = *anyopaque;
 extern "kernel32" fn LoadLibraryW(
@@ -85,19 +83,15 @@ fn load_dll() void {
         dll = null;
         targetDll = stage2_dll;
     }
-    ks_log("Loading DLL: %d", stage);
     dll = LoadLibraryW(targetDll) orelse {
-        ks_log("DLL not found");
         @panic("nigga wut ?");
     };
-    ks_log("Loaded!");
     @setEvalBranchQuota(500000);
     inline for (export_names, 0..) |name, id| {
         var buf: [name.len + 1:0]u8 = undefined;
         buf[name.len] = 0;
         real_addresses[id] =
             GetProcAddress(dll.?, c_string(&buf, name)) orelse {
-                ks_log("failed to proc id: %d", id);
                 @panic("FUCK");
             };
     }
@@ -105,21 +99,15 @@ fn load_dll() void {
 
 pub export fn SteamAPI_RestartAppIfNecessary(appid: i32) bool {
     load_dll();
-    ks_log("successfully loaded DLL and its exports");
     const real_fn_type =
         *const fn (i32) callconv(.c) bool;
 
     const real_fn_addr =
         GetProcAddress(dll.?, "SteamAPI_RestartAppIfNecessary") orelse {
-            ks_log("RestartIfNecessary not found, likely problem with how the string is parsed ?");
             @panic("Wrong API structure ?");
         };
-    ks_log("Loaded RestartIfNecessary");
-    ks_log("AppID: %d", appid);
     const real_fn: real_fn_type = @ptrCast(real_fn_addr);
-    ks_log("Casting to real function succeeded. Running the function");
     const ret = real_fn(appid);
-    ks_log("Function returned value");
     stage += 1;
     return ret;
 }
